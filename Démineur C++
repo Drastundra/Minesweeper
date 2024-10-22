@@ -1,0 +1,207 @@
+// Démineur C++
+
+#include <iostream>
+#include <vector>
+#include <ctime>  //je sais pas à quoi ça sert
+#include <cstdlib>
+
+using namespace std;
+
+enum Cell 
+{
+    EMPTY,
+    MINE,
+    FLAG,
+    REVEALED
+};
+
+struct Game // je ne sais plus à quoi servent les vecteurs
+{
+    vector<vector<int>> board;
+    vector<vector<bool>> revealed;
+    vector<vector<bool>> flagged;
+    int rows;
+    int cols;
+    int mines;
+    bool gameOver;
+
+    Game(int r, int c, int m) : rows(r), cols(c), mines(m), gameOver(false) 
+    {
+        board.resize(rows, vector<int>(cols, 0));
+        revealed.resize(rows, vector<bool>(cols, false));
+        flagged.resize(rows, vector<bool>(cols, false));
+        placeMines();
+        calculateNumbers();
+    }
+
+    void placeMines() // il y a trop de mine par rapprot à ce qui est indiqué
+    {
+        srand(static_cast<unsigned int>(time(0))); // à quoi ça sert
+        int count = 0;
+        while (count < mines) // je ne vois pas où se trouve l'erreur
+        {
+            int x = rand() % rows;
+            int y = rand() % cols;
+            if (board[x][y] != MINE) 
+            {
+                board[x][y] = MINE;
+                count++;
+            }
+        }
+    }
+
+    void calculateNumbers() // ça ne fonctionne pas correctement
+    {
+        for (int i = 0; i < rows; ++i) 
+        {
+            for (int j = 0; j < cols; ++j) 
+            {
+                if (board[i][j] == MINE) 
+                {
+                    continue;
+                }
+                int mineCount = 0;
+                for (int x = -1; x <= 1; ++x) 
+                {
+                    for (int y = -1; y <= 1; ++y) 
+                    {
+                        if (x == 0 && y == 0) continue; // ne pas compter la cellule elle-même
+                        int ni = i + x;
+                        int nj = j + y;
+                        if (ni >= 0 && ni < rows && nj >= 0 && nj < cols && board[ni][nj] == MINE) 
+                        {
+                            mineCount++; // ajouter +1 à la case si une mine est à proximité
+                        }
+                    }
+                }
+                board[i][j] = mineCount; // Mettre à jour le nombre de mines voisines
+            }
+        }
+    }
+
+    void reveal(int x, int y) // compris
+    {
+        if (gameOver || revealed[x][y] || flagged[x][y]) return;
+        revealed[x][y] = true;
+
+        if (board[x][y] == MINE) 
+        {
+            gameOver = true;
+            return;
+        }
+        if (board[x][y] == 0) 
+        {
+            // Révéler les cellules adjacentes
+            for (int i = -1; i <= 1; ++i) 
+            {
+                for (int j = -1; j <= 1; ++j) 
+                {
+                    int ni = x + i;
+                    int nj = y + j;
+                    if (ni >= 0 && ni < rows && nj >= 0 && nj < cols) 
+                    {
+                        reveal(ni, nj);
+                    }
+                }
+            }
+        }
+    }
+
+    void toggleFlag(int x, int y) //compris
+    {
+        if (!revealed[x][y]) 
+        {
+            flagged[x][y] = !flagged[x][y];
+        }
+    }
+
+    void displayBoard() //compris
+    {
+        std::cout << "  ";
+        for (int j = 0; j < cols; ++j) 
+        {
+            std::cout << j << " ";
+        }
+        std::cout << endl;
+
+        for (int i = 0; i < rows; ++i) 
+        {
+            std::cout << i << " ";
+            for (int j = 0; j < cols; ++j) 
+            {
+                if (flagged[i][j]) 
+                {
+                    std::cout << "F ";
+                }
+                /*else if (!revealed[i][j]) 
+                {
+                    cout << "# ";
+                }*/
+                else if (board[i][j] == MINE) 
+                {
+                    std::cout << "* ";
+                }
+                else 
+                {
+                    std::cout << board[i][j] << " ";
+                }
+            }
+            std::cout << endl;
+        }
+    }
+
+    bool isGameOver() const 
+    {
+        return gameOver;
+    }
+};
+
+int main()
+{
+    int level;
+    std::cout << "Choisissez un niveau de difficulte (1: facile, 2: moyen, 3: difficile): ";
+    std::cin >> level;
+
+    int rows, cols, mines;
+    if (level == 1) 
+    {
+        rows = 9; cols = 9; mines = 10; 
+    }
+    else if (level == 2) 
+    {
+        rows = 15; cols = 15; mines = 40; 
+    }
+    else if (level == 3)
+    {
+        rows = 25; cols = 25; mines = 99; 
+    }
+    else
+    {
+        return 0;
+    }
+
+    Game game(rows, cols, mines);
+
+    while (!game.isGameOver()) 
+    {
+        game.displayBoard();
+        int x, y;
+        char action;
+        std::cout << "Entrez l'action (r pour reveler, f pour flaguer) et les coordonnees (x y): ";
+        std::cin >> action >> x >> y;
+
+        if (action == 'r') 
+        {
+            game.reveal(x, y);
+        }
+        else if (action == 'f') 
+        {
+            game.toggleFlag(x, y);
+        }
+    }
+
+    std::cout << "Game Over!" << std::endl;
+    game.displayBoard();
+
+    return 0;
+}
